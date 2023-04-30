@@ -4,6 +4,8 @@ use ndarray::*;
 extern crate ndarray_stats;
 use rand_distr::{Geometric, Distribution};
 
+use std::env;
+
 // Read a csv file and return a 2D array
 fn read_csv(filename: &str, puzzle_size: usize) -> Array2<bool> {
     let mut reader = csv::ReaderBuilder::new()
@@ -23,6 +25,19 @@ fn read_csv(filename: &str, puzzle_size: usize) -> Array2<bool> {
         }
     }
     board
+}
+
+fn print_board(board: &Array2<bool>) {
+    for row in board.rows() {
+        for val in row {
+            if *val {
+                print!("X");
+            } else {
+                print!("0");
+            }
+        }
+        println!();
+    }
 }
 
 // Flip a switch and all switches in the same row and column
@@ -95,15 +110,30 @@ fn minimize_board_entropy(mut board: Array2<bool>, max_steps: usize) -> (Array2<
     (min_ent_board, min_ent_moves)
 }
 
-fn main() {
-    let board = read_csv("./data/large_puzzle.csv", 24);
+fn parse_config(args: &[String]) -> (&str, usize, usize) {
+    if args.len() < 3 {
+        return ("./data/small_puzzle.csv", 4, 1000);
+    }
+    let puzzle_file_path = &args[1];
+    let puzzle_size = args[2].parse::<usize>().unwrap();
+    let max_steps = args[3].parse::<usize>().unwrap();
 
-    println!("Initial board: {:?}", board);
+    (puzzle_file_path, puzzle_size, max_steps)
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let (puzzle_file_path, puzzle_size, max_steps) = parse_config(&args);
+    let board = read_csv(puzzle_file_path, puzzle_size);
+
+    println!("Initial board:");
+    print_board(&board);
     println!("Board entropy: {}", board_entropy(&board));
 
-    let (best_board, _best_moves) = minimize_board_entropy(board.clone(), 1000);
+    let (best_board, _best_moves) = minimize_board_entropy(board.clone(), max_steps);
 
-    println!("Best board: {:?}", best_board);
+    println!("Best board:");
+    print_board(&best_board);
     println!("Board entropy: {}", board_entropy(&best_board));
     //println!("Best moves: {:?}", best_moves);
 }
