@@ -5,6 +5,7 @@ extern crate ndarray_stats;
 use rand_distr::{Geometric, Distribution};
 
 use std::env;
+use std::process;
 
 // Read a csv file and return a 2D array
 fn read_csv(filename: &str, puzzle_size: usize) -> Array2<bool> {
@@ -57,6 +58,7 @@ fn board_entropy(board: &Array2<bool>) -> f64 {
     entropy
 }
 
+// Try all different possible moves and return the entropy of the board after each one
 fn find_all_move_entropies(board: &Array2<bool>) -> Vec<(usize, usize, f64)> {
     let mut entropies = Vec::new();
     for row in 0..board.shape()[0] {
@@ -110,20 +112,32 @@ fn minimize_board_entropy(mut board: Array2<bool>, max_steps: usize) -> (Array2<
     (min_ent_board, min_ent_moves)
 }
 
-fn parse_config(args: &[String]) -> (&str, usize, usize) {
-    if args.len() < 3 {
-        return ("./data/small_puzzle.csv", 4, 1000);
+fn parse_config(args: &[String]) -> Result<(&str, usize, usize), &str> {
+    let num_args = args.len() - 1;
+    if num_args == 0 {
+        return Ok(("./data/small_puzzle.csv", 4, 1000));
     }
-    let puzzle_file_path = &args[1];
-    let puzzle_size = args[2].parse::<usize>().unwrap();
-    let max_steps = args[3].parse::<usize>().unwrap();
+    else if num_args > 0 && num_args < 3 {
+        return Err("Not enough arguments");
+    }
+    else if num_args == 3 {
+        let puzzle_file_path = &args[1];
+        let puzzle_size = args[2].parse::<usize>().unwrap();
+        let max_steps = args[3].parse::<usize>().unwrap();
 
-    (puzzle_file_path, puzzle_size, max_steps)
+        return Ok((puzzle_file_path, puzzle_size, max_steps));
+    }
+    else {
+        return Err("Too many arguments");
+    }
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let (puzzle_file_path, puzzle_size, max_steps) = parse_config(&args);
+    let (puzzle_file_path, puzzle_size, max_steps) = parse_config(&args).unwrap_or_else(|err| {
+        println!("Problem parsing arguments: {err}");
+        process::exit(1);
+    });
     let board = read_csv(puzzle_file_path, puzzle_size);
 
     println!("Initial board:");
