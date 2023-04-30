@@ -4,6 +4,27 @@ use ndarray::*;
 extern crate ndarray_stats;
 use rand_distr::{Geometric, Distribution};
 
+// Read a csv file and return a 2D array
+fn read_csv(filename: &str, puzzle_size: usize) -> Array2<bool> {
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_path(filename).unwrap();
+    
+    let mut board = Array2::<bool>::default((puzzle_size, puzzle_size));
+    for (i, result) in reader.records().enumerate() {
+        let record = result.unwrap();
+        for (j, value) in record.iter().enumerate() {
+            let val = match value {
+                "0" => false,
+                "1" => true,
+                _ => panic!("Invalid value in csv file"),
+            };
+            board[[i, j]] = val;
+        }
+    }
+    board
+}
+
 // Flip a switch and all switches in the same row and column
 fn flip_switch(board: Array2<bool>, row: usize, col: usize) -> Array2<bool> {
     let mut board = board.clone();
@@ -15,13 +36,7 @@ fn flip_switch(board: Array2<bool>, row: usize, col: usize) -> Array2<bool> {
 
 // Calculate the (binary) entropy of the board
 fn board_entropy(board: &Array2<bool>) -> f64 {
-
-    // Count the amount of true's in the board
-    let num_true: u8 = board.iter().map(|x| match *x {
-        true => 1,
-        false => 0,
-    } as u8).sum::<u8>();
-
+    let num_true = board.iter().filter(|x| **x).count();
     let p = (num_true as f64 / board.len() as f64) as f64;
     let entropy = -p * p.log2() - (1.0 - p) * ((1.0 - p) as f64).log2();
     entropy
@@ -81,18 +96,12 @@ fn minimize_board_entropy(mut board: Array2<bool>, max_steps: usize) -> (Array2<
 }
 
 fn main() {
-
-    let board = array![
-    [false, false, true, true], 
-    [true, true, false, true],
-    [false, true, true, false], 
-    [false, false, false, true]
-    ];
+    let board = read_csv("./data/large_puzzle.csv", 24);
 
     println!("Initial board: {:?}", board);
     println!("Board entropy: {}", board_entropy(&board));
 
-    let (best_board, _best_moves) = minimize_board_entropy(board.clone(), 100000);
+    let (best_board, _best_moves) = minimize_board_entropy(board.clone(), 1000);
 
     println!("Best board: {:?}", best_board);
     println!("Board entropy: {}", board_entropy(&best_board));
